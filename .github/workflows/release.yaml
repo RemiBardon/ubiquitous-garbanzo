@@ -24,11 +24,41 @@ jobs:
           TAG='${{ steps.current_tag.outputs.tag }}'
           echo "version=${TAG#core-}" >> $GITHUB_OUTPUT
 
+      - name: Parse changelog
+        run: |
+          TAG='${{ steps.parsing.outputs.version }}'
+
+          # NOTE(@RemiBardon): I am aware this might be a little cryptic so
+          #   here’s a rough explanation:
+          #
+          #   - `ex` opens `CHANGELOG.md` and executes the commands until `EOF`;
+          #   - `${TAG//\./\\.}` escapes dots in the tag (regex precaution);
+          #   - `/^## \[?${TAG//\./\\.}\]? /` moves the cursor to the first
+          #     level 2 Markdown heading containing the desired tag (supported
+          #     patterns: `## X.Y.Z`, `## [X.Y.Z]` or with anything afterward);
+          #   - `/^### /` moves cursor to the next level 3 heading;
+          #   - `;/^## /-1` selects until next level 2 heading, but excludes it;
+          #   - `p` prints the selection;
+          #   - `sed 's/^ $//'` empties lines containing only a single space,
+          #     because for some reason `ex` adds that;
+          #   - Finally, the result is written into `CHANGELOG.txt`, which can
+          #     be used later.
+          #
+          #   I’m aware that in most cases the result contains an empty line at
+          #   the end, but cleaning it up feels like a footgun and either
+          #   requires a lot more code or risks removing content if done
+          #   naively. An empty line at the end of a file has no meaning in
+          #   Markdown so we can just pretend it’s not there.
+          ex -s core/CHANGELOG.md <<EOF | sed 's/^ $//' > CHANGELOG.txt
+          /^## \[?${TAG//\./\\.}[^] $]/
+          /^### /;/^## /-1p
+          EOF
+
       - name: Release new version
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           tag_name: ${{ steps.current_tag.outputs.tag }}
           name: Sonic core ${{ steps.parsing.outputs.version }}
-          body_path: ${{ github.workspace }}/core/CHANGELOG.md
+          body_path: CHANGELOG.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
