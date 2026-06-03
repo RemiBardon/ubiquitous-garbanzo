@@ -26,7 +26,12 @@ jobs:
 
       - name: Parse changelog
         run: |
+          echo '${{ steps.current_tag.outputs.tag }}'
           TAG='${{ steps.parsing.outputs.version }}'
+          echo "$TAG"
+          # Remove `v` prefix from `vX.Y.Z`.
+          TAG="${TAG#v}"
+          echo "$TAG"
 
           # NOTE(@RemiBardon): I am aware this might be a little cryptic so
           #   here’s a rough explanation:
