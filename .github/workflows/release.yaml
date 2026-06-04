@@ -33,7 +33,7 @@ jobs:
           TAG="${TAG#v}"
           echo "$TAG"
 
-          awk -f - core/CHANGELOG.md <<EOF > CHANGELOG.txt
+          awk -f - core/CHANGELOG.md <<EOF | sed -E 's/^(#*)## /\1# /' > CHANGELOG.txt
           # Find the tag section header, and skip it.
           /^## \[?${TAG//\./\\.}\]?( |$)/              { in_section=1; next }
 
